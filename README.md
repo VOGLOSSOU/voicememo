@@ -17,27 +17,62 @@ Application web pour enregistrer des notes vocales et les transcrire automatique
 
 ### Prérequis
 
-- Python 3.8+
+- Python 3.8+ (testé avec Python 3.12)
 - Un navigateur moderne (Chrome, Firefox, Edge)
 - Un microphone
+- ffmpeg (installé automatiquement avec Whisper)
 
-### Étape 1 : Installer les dépendances Python
+### Étape 1 : Créer un environnement virtuel (IMPORTANT)
+
+**Sur Ubuntu/Debian/Linux :**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+**Sur Windows :**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**Sur macOS :**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Vous verrez `(venv)` apparaître au début de votre terminal.
+
+### Étape 2 : Installer les dépendances Python
 
 ```bash
+pip install --upgrade pip
+pip install setuptools wheel
 pip install -r requirements.txt
 ```
 
-**Note :** L'installation de Whisper peut prendre quelques minutes car il télécharge les modèles nécessaires.
+**Note :** 
+- L'installation de Whisper peut prendre 5-10 minutes car il télécharge les modèles (~3GB de dépendances)
+- Le dossier `venv/` sera créé (~300MB) - il est déjà dans .gitignore
 
-### Étape 2 : Lancer le serveur backend
+### Étape 3 : Lancer le serveur backend
+
+**Important :** Assurez-vous que l'environnement virtuel est activé (vous devez voir `(venv)` dans votre terminal).
 
 ```bash
+# Si pas encore activé :
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate     # Windows
+
+# Puis lancez le serveur :
 python app.py
 ```
 
 Le serveur démarrera sur `http://localhost:5000`
 
-### Étape 3 : Ouvrir l'application
+### Étape 4 : Ouvrir l'application
 
 Ouvrez simplement le fichier `index.html` dans votre navigateur ou utilisez un serveur local :
 
@@ -49,6 +84,20 @@ python -m http.server 8000
 ```
 
 ##  Utilisation
+
+### Démarrage quotidien
+
+Chaque fois que vous voulez utiliser VoiceMemo :
+
+```bash
+cd voicememo
+source venv/bin/activate  # Active l'environnement virtuel
+python app.py             # Lance le serveur
+```
+
+Puis ouvrez `index.html` dans votre navigateur.
+
+### Étapes d'enregistrement
 
 1. **Enregistrer** : Cliquez sur le bouton 🎙️ pour commencer l'enregistrement
 2. **Arrêter** : Cliquez à nouveau sur ⏹️ pour arrêter
@@ -78,7 +127,7 @@ VoiceMemo/
 - **Whisper** : modèle de transcription OpenAI
 - **CORS** : communication frontend ↔ backend
 
-## ⚙️ Configuration
+##  Configuration
 
 ### Changer le modèle Whisper
 
@@ -114,9 +163,27 @@ result = model.transcribe(
 - Testez avec HTTPS ou localhost uniquement
 - Vérifiez que votre micro est bien branché
 
+### Erreur "externally-managed-environment" (Ubuntu/Debian)
+```bash
+# Solution : Utilisez un environnement virtuel
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Ne jamais utiliser `--break-system-packages`** - cela peut endommager votre système Python.
+
+### Erreur "ModuleNotFoundError: No module named 'pkg_resources'"
+```bash
+# Solution : Installez setuptools d'abord
+pip install setuptools wheel
+pip install -r requirements.txt
+```
+
 ### Erreur "Impossible de contacter le serveur"
 - Vérifiez que `python app.py` est bien lancé
 - Le serveur doit tourner sur `http://localhost:5000`
+- Vérifiez que l'environnement virtuel est activé `(venv)`
 - Vérifiez les logs dans la console Python
 
 ### La transcription est lente
