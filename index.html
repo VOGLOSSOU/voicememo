@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Enregistrez vos notes vocales et obtenez la transcription automatique avec Whisper">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="manifest.json">
+    <title>VoiceMemo - Notes vocales</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #F5F5F5;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #000000;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #000000 #F5F5F5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+            background: #FFFFFF;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #000000;
+            color: #FFFFFF;
+            padding: 24px;
+            text-align: center;
+            border-bottom: 4px solid #000000;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .recorder-card {
+            background: #FFFFFF;
+            border: 3px solid #000000;
+            padding: 40px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .record-btn {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: #000000;
+            color: #FFFFFF;
+            border: none;
+            font-size: 48px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .record-btn:hover {
+            transform: scale(1.1);
+            background: #333333;
+        }
+
+        .record-btn.recording {
+            background: #FF0000;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .timer {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            background: #000000;
+            color: #FFFFFF;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #333333;
+        }
+
+        .btn:disabled {
+            background: #CCCCCC;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #FFFFFF;
+            color: #000000;
+            border: 2px solid #000000;
+        }
+
+        .btn-secondary:hover {
+            background: #F5F5F5;
+        }
+
+        .visualizer {
+            width: 100%;
+            height: 80px;
+            background: #F5F5F5;
+            border: 2px solid #000000;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .visualizer.active {
+            display: block;
+        }
+
+        .memos-list {
+            background: #FFFFFF;
+            border: 3px solid #000000;
+            padding: 30px;
+        }
+
+        .memos-list h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .memo-item {
+            background: #F5F5F5;
+            border: 2px solid #000000;
+            padding: 20px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .memo-item:hover {
+            background: #E0E0E0;
+            transform: translateX(4px);
+        }
+
+        .memo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .memo-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .memo-date {
+            font-size: 14px;
+            color: #666666;
+        }
+
+        .memo-preview {
+            font-size: 14px;
+            color: #555555;
+            margin-bottom: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .memo-duration {
+            font-size: 12px;
+            color: #999999;
+        }
+
+        .memo-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .memo-actions button {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666666;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #FFFFFF;
+            border: 4px solid #000000;
+            padding: 40px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            font-size: 24px;
+        }
+
+        .close-btn {
+            background: #000000;
+            color: #FFFFFF;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .transcript-text {
+            background: #F5F5F5;
+            border: 2px solid #000000;
+            padding: 20px;
+            min-height: 200px;
+            margin: 20px 0;
+            font-size: 15px;
+            line-height: 1.8;
+            outline: none;
+        }
+
+        .transcript-text[contenteditable="true"] {
+            cursor: text;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #000000;
+            color: #FFFFFF;
+            padding: 16px 24px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1001;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .info-box {
+            background: #F5F5F5;
+            border: 2px solid #000000;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-box h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+
+        .info-box p {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #555555;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 28px;
+            }
+
+            .recorder-card {
+                padding: 24px;
+            }
+
+            .record-btn {
+                width: 100px;
+                height: 100px;
+                font-size: 40px;
+            }
+
+            .timer {
+                font-size: 24px;
+            }
+
+            .modal-content {
+                padding: 24px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>VoiceMemo</h1>
+        <p>Enregistrez vos notes vocales et obtenez la transcription</p>
+    </div>
+
+    <div class="container">
+        <div class="info-box">
+            <h3>Comment ça marche ?</h3>
+            <p>
+                Cliquez sur le bouton pour enregistrer votre note vocale. Une fois terminé, 
+                l'audio sera transcrit automatiquement en texte grâce à Whisper. 
+                Assurez-vous que le serveur backend est lancé (python app.py).
+            </p>
+        </div>
+
+        <div class="recorder-card">
+            <button class="record-btn" id="record-btn" onclick="toggleRecording()">🎙️</button>
+            <div class="timer" id="timer">00:00</div>
+            <canvas class="visualizer" id="visualizer" width="800" height="80"></canvas>
+            
+            <div class="controls">
+                <button class="btn" id="save-btn" onclick="saveMemo()" disabled>💾 Sauvegarder et Transcrire</button>
+                <button class="btn btn-secondary" id="cancel-btn" onclick="cancelRecording()" disabled>❌ Annuler</button>
+            </div>
+        </div>
+
+        <div class="memos-list">
+            <h2>Vos mémos vocaux (<span id="memo-count">0</span>)</h2>
+            <div id="memos-container"></div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="memo-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Mémo vocal</h3>
+                <button class="close-btn" onclick="closeModal()">✕</button>
+            </div>
+            <audio id="modal-audio" controls style="width: 100%; margin-bottom: 20px;"></audio>
+            <div id="modal-transcript" class="transcript-text" contenteditable="true"></div>
+            <div class="controls">
+                <button class="btn" onclick="exportTranscript()">📥 Exporter TXT</button>
+                <button class="btn btn-secondary" onclick="deleteMemo()">🗑️ Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker enregistré:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Erreur Service Worker:', error);
+                    });
+            });
+        }
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingStart;
+        let timerInterval;
+        let audioContext;
+        let analyser;
+        let memos = [];
+        let currentMemoId = null;
+
+        // Load memos on startup
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('voicememo-memos');
+            if (saved) {
+                memos = JSON.parse(saved);
+                renderMemos();
+            }
+        });
+
+        async function toggleRecording() {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    // Store for later
+                    window.currentRecording = { blob: audioBlob, url: audioUrl };
+                };
+
+                mediaRecorder.start();
+                recordingStart = Date.now();
+
+                // UI updates
+                document.getElementById('record-btn').classList.add('recording');
+                document.getElementById('record-btn').textContent = '⏹️';
+                document.getElementById('save-btn').disabled = false;
+                document.getElementById('cancel-btn').disabled = false;
+                document.getElementById('visualizer').classList.add('active');
+
+                // Timer
+                timerInterval = setInterval(updateTimer, 1000);
+
+                // Visualizer
+                setupVisualizer(stream);
+
+                showToast('🎙️ Enregistrement démarré');
+            } catch (error) {
+                console.error('Erreur:', error);
+                showToast('❌ Impossible d\'accéder au microphone');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                
+                clearInterval(timerInterval);
+                
+                document.getElementById('record-btn').classList.remove('recording');
+                document.getElementById('record-btn').textContent = '🎙️';
+                document.getElementById('visualizer').classList.remove('active');
+                
+                showToast('⏹️ Enregistrement arrêté');
+            }
+        }
+
+        function updateTimer() {
+            const elapsed = Math.floor((Date.now() - recordingStart) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+        }
+
+        function setupVisualizer(stream) {
+            audioContext = new AudioContext();
+            analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+            
+            const canvas = document.getElementById('visualizer');
+            const ctx = canvas.getContext('2d');
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            function draw() {
+                if (!document.getElementById('visualizer').classList.contains('active')) return;
+                requestAnimationFrame(draw);
+                
+                analyser.getByteFrequencyData(dataArray);
+                ctx.fillStyle = '#F5F5F5';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let x = 0;
+                
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = (dataArray[i] / 255) * canvas.height;
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+            }
+            
+            draw();
+        }
+
+        async function saveMemo() {
+            if (!window.currentRecording) return;
+            
+            showToast('📤 Envoi pour transcription...');
+            
+            const formData = new FormData();
+            formData.append('audio', window.currentRecording.blob, 'recording.webm');
+            
+            try {
+                const response = await fetch('http://localhost:5000/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const memo = {
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        audioUrl: window.currentRecording.url,
+                        audioBlob: await window.currentRecording.blob.arrayBuffer(),
+                        transcript: data.transcript,
+                        duration: document.getElementById('timer').textContent
+                    };
+                    
+                    memos.unshift(memo);
+                    saveMemos();
+                    renderMemos();
+                    
+                    resetRecorder();
+                    showToast('✅ Mémo sauvegardé et transcrit !');
+                } else {
+                    showToast('❌ Erreur lors de la transcription');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showToast('❌ Impossible de contacter le serveur. Lancez python app.py');
+            }
+        }
+
+        function cancelRecording() {
+            if (window.currentRecording) {
+                URL.revokeObjectURL(window.currentRecording.url);
+                window.currentRecording = null;
+            }
+            resetRecorder();
+            showToast('🗑️ Enregistrement annulé');
+        }
+
+        function resetRecorder() {
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('save-btn').disabled = true;
+            document.getElementById('cancel-btn').disabled = true;
+        }
+
+        function renderMemos() {
+            const container = document.getElementById('memos-container');
+            document.getElementById('memo-count').textContent = memos.length;
+            
+            if (memos.length === 0) {
+                container.innerHTML = '<div class="empty-state"><h3>Aucun mémo</h3><p>Enregistrez votre premier mémo vocal</p></div>';
+                return;
+            }
+            
+            container.innerHTML = memos.map(memo => {
+                const date = new Date(memo.date).toLocaleString('fr-FR');
+                const preview = memo.transcript.substring(0, 100) + (memo.transcript.length > 100 ? '...' : '');
+                
+                return `
+                    <div class="memo-item" onclick="openMemo(${memo.id})">
+                        <div class="memo-header">
+                            <div class="memo-title">Mémo vocal</div>
+                            <div class="memo-date">${date}</div>
+                        </div>
+                        <div class="memo-preview">${preview}</div>
+                        <div class="memo-duration">⏱️ ${memo.duration}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openMemo(id) {
+            const memo = memos.find(m => m.id === id);
+            if (!memo) return;
+            
+            currentMemoId = id;
+            
+            const audioBlob = new Blob([memo.audioBlob], { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            document.getElementById('modal-audio').src = audioUrl;
+            document.getElementById('modal-transcript').textContent = memo.transcript;
+            document.getElementById('modal-title').textContent = `Mémo du ${new Date(memo.date).toLocaleString('fr-FR')}`;
+            
+            document.getElementById('memo-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('memo-modal').classList.remove('active');
+            currentMemoId = null;
+        }
+
+        function exportTranscript() {
+            const memo = memos.find(m => m.id === currentMemoId);
+            if (!memo) return;
+            
+            const text = document.getElementById('modal-transcript').textContent;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `memo_${new Date(memo.date).toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('📥 Transcription exportée');
+        }
+
+        function deleteMemo() {
+            if (!confirm('Supprimer ce mémo ?')) return;
+            
+            memos = memos.filter(m => m.id !== currentMemoId);
+            saveMemos();
+            renderMemos();
+            closeModal();
+            showToast('🗑️ Mémo supprimé');
+        }
+
+        function saveMemos() {
+            localStorage.setItem('voicememo-memos', JSON.stringify(memos));
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
